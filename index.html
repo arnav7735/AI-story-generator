@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Story Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        .press-start-2p-regular {
+            font-family: "Press Start 2P", system-ui;
+            font-weight: 400;
+            font-style: normal;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #262629;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .container {
+            width: 80%;
+            max-width: 1200px;
+            background: black;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #4a90e2;
+        }
+
+        input,
+        button {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+            width: 1200px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: gray;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: yellowgreen;
+        }
+
+        #output {
+            background: gray;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        #continue-options {
+            margin: 15px 0;
+        }
+
+        .option-button {
+            background: black;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 5px;
+            cursor: pointer;
+            display: block;
+            width: 100%;
+            text-align: left;
+        }
+
+        .option-button:hover {
+            background: yellowgreen;
+        }
+
+        .final-story {
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="press-start-2p-regular" style="color: yellowgreen;">Interactive Story Generator</h1>
+        <input type="text" id="input1" placeholder="Enter the beginning of your story"><br>
+        <button id="start-button">Start Story</button><br>
+        <div id="output"></div>
+        <div id="continue-options"></div>
+    </div>
+
+    <script>
+        let currentStory = '';
+        let iteration = 0;
+        const maxIterations = 5; // Number of iterations per selection
+
+        document.getElementById('start-button').addEventListener('click', () => {
+            const inputText = document.getElementById('input1').value;
+            currentStory = inputText;
+            iteration = 1;
+            continueStory();
+        });
+
+        function continueStory() {
+            if (iteration <= maxIterations) {
+                fetch('/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ previous_story: currentStory, iteration: iteration }),
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Server response:', data); // Log server response
+                        if (data.result1 && data.result2 && data.result3) {
+                            document.getElementById('output').innerHTML = `
+                            <strong>Current Story:</strong><br>${escapeText(currentStory)}<br><br>
+                            <strong>Choose how to continue:</strong><br>
+                            <button class="option-button" onclick="selectContinuation('${escapeText(data.result1)}')">1: ${escapeText(data.result1)}</button>
+                            <button class="option-button" onclick="selectContinuation('${escapeText(data.result2)}')">2: ${escapeText(data.result2)}</button>
+                            <button class="option-button" onclick="selectContinuation('${escapeText(data.result3)}')">3: ${escapeText(data.result3)}</button>
+                            <button class="option-button" onclick="stopStory()">Stop Story</button>
+                        `;
+                        } else {
+                            document.getElementById('output').innerHTML = 'Error: Unexpected response format.';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        document.getElementById('output').innerText = `Error: ${error.message}`;
+                    });
+            } else {
+                stopStory();
+            }
+        }
+
+        function selectContinuation(selectedText) {
+            currentStory = selectedText;
+            iteration += 1;
+            continueStory();
+        }
+
+        function stopStory() {
+            document.getElementById('output').innerHTML = `
+                <strong class="final-story">Final Story:</strong><br>${escapeText(currentStory)}
+            `;
+            document.getElementById('continue-options').innerHTML = '';
+        }
+
+        function escapeText(text) {
+            return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/\\/g, '\\\\').replace(/\n/g, '<br>');
+        }
+    </script>
+</body>
+
+</html>
